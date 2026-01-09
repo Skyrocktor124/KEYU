@@ -1,0 +1,7 @@
+{
+  "name": "Neon Rhythm Slasher",
+  "description": "A 3D rhythm action game where you slash glowing sparks to the beat using hand gestures.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
