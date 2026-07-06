@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+body {
+  margin: 0;
+  background-color: #f6f4ef;
+  color: #1f2933;
+  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cfc8ba;
+  border-radius: 3px;
+}

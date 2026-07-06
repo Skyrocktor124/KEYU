@@ -1,20 +1,46 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 京华文考 · 北京高考文科智能突破
 
-# Run and deploy your AI Studio app
+一个**会自我更新迭代**的北京高考文科（历史 / 地理 / 政治）学习网站。
 
-This contains everything you need to run your app locally.
+## 核心理念：短时间突破 = 精准内容 × 科学重复 × 自我进化
 
-View your app in AI Studio: https://ai.studio/apps/drive/18DvVAkIu4wZiDRUdR0n00dX5O_yPDCqA
+| 模块 | 说明 |
+| --- | --- |
+| 📊 仪表盘 | 高考倒计时、三科掌握度、连续学习天数、薄弱专题雷达 |
+| 📖 今日复习 | 基于**艾宾浩斯遗忘曲线**（简化 SM-2 算法）的闪卡复习：忘了→当天回炉，记住→间隔 1/3/7/15/30 天再现 |
+| 📚 知识库 | 内置 70 张种子考点卡（历史 28 / 地理 22 / 政治 20），按「学科→模块→专题」组织，附北京卷考法提示 + 15 套主观题**答题模板** |
+| ✏️ 智能刷题 | 24 道仿北京卷种子题，答错自动进错题本 |
+| 📕 错题本 | 重做答对才能「销账」，反复错的题优先曝光 |
+| 🎓 AI 教练 | 携带你的薄弱点数据的个性化答疑老师 |
 
-## Run Locally
+## 「自我更新迭代」如何实现
 
-**Prerequisites:**  Node.js
+1. **学习数据驱动**（离线可用）：每次复习评分都会更新掌握等级与复习排期，系统自动定位薄弱专题、调整每日队列——知识呈现随你的状态迭代。
+2. **AI 进化引擎**（需配置 Gemini API Key）：
+   - **AI 扩展专题**：针对任意专题生成新的考点卡片，知识库持续生长；
+   - **AI 出新题**：优先围绕还没有配题的考点命制仿真题，题库随知识库同步扩张；
+   - **AI 时政更新**：政治学科一键生成近一年热点 + 教材原理挂钩 + 预测设问；
+   - 所有 AI 生成内容带「AI 生成」标记，并进入同一套间隔重复体系。
 
+学习记录保存在浏览器 localStorage 中，无需注册。
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 本地运行
+
+前置要求：Node.js
+
+```bash
+npm install
+# 可选：启用 AI 功能
+echo "GEMINI_API_KEY=你的Key" > .env.local
+npm run dev
+```
+
+> 未配置 API Key 时，知识库、复习引擎、刷题、错题本全部可离线使用，仅 AI 按钮隐藏。
+
+## 使用建议（冲刺节奏）
+
+1. 每天打开先清空「今日复习」（约 15–25 分钟）；
+2. 按仪表盘提示攻 1 个薄弱专题：读卡片 → AI 出题 → 刷题检验；
+3. 睡前清一遍错题本；
+4. 政治每周用「AI 时政更新」补一次热点；
+5. 大题只背「答题模板」+ 卡片里的**加粗术语**，考前 7 天只看错 2 次以上的题和等级 ≤ 2 的卡。

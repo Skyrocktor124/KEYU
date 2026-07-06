@@ -1,7 +1,5 @@
 {
-  "name": "Neon Rhythm Slasher",
-  "description": "A 3D rhythm action game where you slash glowing sparks to the beat using hand gestures.",
-  "requestFramePermissions": [
-    "camera"
-  ]
+  "name": "京华文考 · 北京高考文科智能突破",
+  "description": "面向北京高考等级考（历史 / 地理 / 政治）的自进化学习系统：内置高频考点知识库与答题模板，基于艾宾浩斯遗忘曲线安排复习，并可用 AI 持续扩展考点、生成新题、更新时政热点。",
+  "requestFramePermissions": []
 }
