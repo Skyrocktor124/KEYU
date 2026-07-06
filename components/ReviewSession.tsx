@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Eye, RotateCcw, Check, Zap, PartyPopper } from 'lucide-react';
 import { KnowledgePoint, MasteryRecord, ReviewGrade } from '../types';
 import { buildReviewQueue } from '../services/srs';
+import { sfx } from '../services/effects';
 import { RichText, SubjectBadge, LevelDots, AiTag } from './ui';
 
 interface Props {
@@ -30,6 +31,7 @@ const ReviewSession: React.FC<Props> = ({ kps, mastery, onRate }) => {
 
   const grade = (g: ReviewGrade) => {
     if (!current) return;
+    g === 'again' ? sfx.wrong() : sfx.correct();
     onRate(current.id, g);
     setRevealed(false);
     setQueue((q) => {
@@ -95,7 +97,10 @@ const ReviewSession: React.FC<Props> = ({ kps, mastery, onRate }) => {
           </div>
         ) : (
           <button
-            onClick={() => setRevealed(true)}
+            onClick={() => {
+              sfx.flip();
+              setRevealed(true);
+            }}
             className="w-full p-10 flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-50 transition"
           >
             <Eye className="w-5 h-5" />

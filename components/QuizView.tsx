@@ -3,12 +3,15 @@ import { CheckCircle2, XCircle, Shuffle, Sparkles } from 'lucide-react';
 import { KnowledgePoint, QuizQuestion, SubjectId } from '../types';
 import { SUBJECTS, SUBJECT_IDS } from '../constants';
 import { aiAvailable, generateQuestions } from '../services/geminiService';
+import { sfx } from '../services/effects';
 import { RichText, SubjectBadge, AiTag, Spinner } from './ui';
 
 interface Props {
   questions: QuizQuestion[];
   kps: KnowledgePoint[];
   onWrong: (questionId: string) => void;
+  onAnswer: (subject: SubjectId, correct: boolean, combo: number) => void;
+  onRoundEnd: (right: number, total: number) => void;
   onAddQuestions: (qs: QuizQuestion[]) => void;
 }
 
@@ -22,12 +25,13 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 /** 智能刷题：按学科抽题作答，答错自动进错题本；可让 AI 围绕薄弱考点生成新题 */
-const QuizView: React.FC<Props> = ({ questions, kps, onWrong, onAddQuestions }) => {
+const QuizView: React.FC<Props> = ({ questions, kps, onWrong, onAnswer, onRoundEnd, onAddQuestions }) => {
   const [subject, setSubject] = useState<SubjectId>('history');
   const [order, setOrder] = useState<string[]>([]);
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [score, setScore] = useState({ right: 0, total: 0 });
+  const [combo, setCombo] = useState(0);
   const [genBusy, setGenBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +44,7 @@ const QuizView: React.FC<Props> = ({ questions, kps, onWrong, onAddQuestions }) 
     setIdx(0);
     setPicked(null);
     setScore({ right: 0, total: 0 });
+    setCombo(0);
   };
 
   const pick = (i: number) => {
@@ -47,7 +52,15 @@ const QuizView: React.FC<Props> = ({ questions, kps, onWrong, onAddQuestions }) 
     setPicked(i);
     const right = i === current.answer;
     setScore((s) => ({ right: s.right + (right ? 1 : 0), total: s.total + 1 }));
-    if (!right) onWrong(current.id);
+    const newCombo = right ? combo + 1 : 0;
+    setCombo(newCombo);
+    if (right) {
+      newCombo >= 3 ? sfx.combo(newCombo) : sfx.correct();
+    } else {
+      sfx.wrong();
+      onWrong(current.id);
+    }
+    onAnswer(current.subject, right, newCombo);
   };
 
   const genFromWeakKp = async () => {
@@ -127,11 +140,20 @@ const QuizView: React.FC<Props> = ({ questions, kps, onWrong, onAddQuestions }) 
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div
+          className={`bg-white rounded-2xl border border-slate-200 p-6 ${
+            picked !== null ? (picked === current.answer ? 'animate-pop' : 'animate-shake') : ''
+          }`}
+        >
           <div className="flex items-center justify-between text-sm text-slate-400">
             <span className="flex items-center gap-2">
               <SubjectBadge subject={current.subject} small />
               {current.source === 'ai' && <AiTag />}
+              {combo >= 2 && (
+                <span className="text-sm font-bold text-orange-600">
+                  <span className="animate-flame">🔥</span> 连击 ×{combo}
+                </span>
+              )}
             </span>
             <span>
               第 {idx + 1} / {order.length} 题 · 答对 {score.right}
@@ -169,12 +191,13 @@ const QuizView: React.FC<Props> = ({ questions, kps, onWrong, onAddQuestions }) 
               </div>
               <button
                 onClick={() => {
+                  if (idx + 1 >= order.length) onRoundEnd(score.right, score.total);
                   setIdx((i) => i + 1);
                   setPicked(null);
                 }}
                 className="mt-4 w-full py-2.5 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-700 transition"
               >
-                下一题
+                {idx + 1 >= order.length ? '完成本轮' : '下一题'}
               </button>
             </>
           )}
