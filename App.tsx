@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutDashboard, BookOpen, Library as LibraryIcon, PencilRuler, NotebookPen, GraduationCap, Zap, Swords } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Library as LibraryIcon, PencilRuler, NotebookPen, GraduationCap, Zap, Swords, Compass, Wand2 } from 'lucide-react';
 import { KnowledgePoint, MasteryRecord, QuizQuestion, ReviewGrade, SubjectId, WrongRecord } from './types';
 import { STORAGE_KEYS, SUBJECTS } from './constants';
 import { SEED_KPS, SEED_QUESTIONS } from './data';
@@ -7,8 +7,11 @@ import { useLocalStorage } from './services/storage';
 import { rateCard, todayKey, weakTopics } from './services/srs';
 import { GameData, DEFAULT_GAME, GameEvent, applyEvent, computeStreak, LevelInfo } from './services/game';
 import { AdventureData, DEFAULT_ADVENTURE } from './services/adventure';
+import { WorldData, DEFAULT_WORLD } from './services/world';
 import { confetti, floatText, setSoundMuted, sfx } from './services/effects';
 import Adventure from './components/Adventure';
+import World from './components/World';
+import Academy3D, { AcademyData, DEFAULT_ACADEMY } from './components/Academy3D';
 import Dashboard from './components/Dashboard';
 import ReviewSession from './components/ReviewSession';
 import Library from './components/Library';
@@ -18,10 +21,12 @@ import AICoach from './components/AICoach';
 import Sprint from './components/Sprint';
 import GameHud from './components/GameHud';
 
-type Tab = 'dashboard' | 'adventure' | 'review' | 'sprint' | 'library' | 'quiz' | 'wrong' | 'coach';
+type Tab = 'dashboard' | 'academy' | 'world' | 'adventure' | 'review' | 'sprint' | 'library' | 'quiz' | 'wrong' | 'coach';
 
 const TABS: { id: Tab; label: string; icon: React.FC<{ className?: string }> }[] = [
   { id: 'dashboard', label: '仪表盘', icon: LayoutDashboard },
+  { id: 'academy', label: '魔法学院', icon: Wand2 },
+  { id: 'world', label: '文灵世界', icon: Compass },
   { id: 'adventure', label: '赶考之路', icon: Swords },
   { id: 'review', label: '今日复习', icon: BookOpen },
   { id: 'sprint', label: '极速挑战', icon: Zap },
@@ -42,6 +47,8 @@ const App: React.FC = () => {
   const [studyLog, setStudyLog] = useLocalStorage<Record<string, number>>(STORAGE_KEYS.studyLog, {});
   const [game, setGame] = useLocalStorage<GameData>(STORAGE_KEYS.game, DEFAULT_GAME);
   const [adventure, setAdventure] = useLocalStorage<AdventureData>(STORAGE_KEYS.adventure, DEFAULT_ADVENTURE);
+  const [world, setWorld] = useLocalStorage<WorldData>(STORAGE_KEYS.world, DEFAULT_WORLD);
+  const [academy, setAcademy] = useLocalStorage<AcademyData>(STORAGE_KEYS.academy, DEFAULT_ACADEMY);
 
   // 游戏化反馈
   const [toasts, setToasts] = useState<{ id: number; text: string }[]>([]);
@@ -151,6 +158,31 @@ const App: React.FC = () => {
             onGoSprint={() => setTab('sprint')}
             onGoAdventure={() => setTab('adventure')}
             onGoWrong={() => setTab('wrong')}
+          />
+        )}
+        {tab === 'academy' && (
+          <Academy3D
+            kps={allKps}
+            questions={allQuestions}
+            academy={academy}
+            setAcademy={setAcademy}
+            adventure={adventure}
+            setAdventure={setAdventure}
+            onWrong={handleWrong}
+            onDuelEnd={(victory) => fireGame({ type: 'battleEnd', victory, stars: 1, firstClear: false, finalBoss: false })}
+          />
+        )}
+        {tab === 'world' && (
+          <World
+            kps={allKps}
+            questions={allQuestions}
+            mastery={mastery}
+            adventure={adventure}
+            setAdventure={setAdventure}
+            world={world}
+            setWorld={setWorld}
+            onWrong={handleWrong}
+            onBattleResult={(victory, gym) => fireGame({ type: 'battleEnd', victory, stars: gym ? 3 : 1, firstClear: false, finalBoss: false })}
           />
         )}
         {tab === 'adventure' && (
