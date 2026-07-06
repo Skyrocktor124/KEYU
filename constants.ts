@@ -58,6 +58,7 @@ export const STORAGE_KEYS = {
   aiQuestions: 'jhwk_ai_questions',
   studyLog: 'jhwk_study_log',
   game: 'jhwk_game',
+  adventure: 'jhwk_adventure',
 };
 
 export const GEMINI_MODEL = 'gemini-3-flash-preview';

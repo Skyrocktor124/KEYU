@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutDashboard, BookOpen, Library as LibraryIcon, PencilRuler, NotebookPen, GraduationCap, Zap } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Library as LibraryIcon, PencilRuler, NotebookPen, GraduationCap, Zap, Swords } from 'lucide-react';
 import { KnowledgePoint, MasteryRecord, QuizQuestion, ReviewGrade, SubjectId, WrongRecord } from './types';
 import { STORAGE_KEYS, SUBJECTS } from './constants';
 import { SEED_KPS, SEED_QUESTIONS } from './data';
 import { useLocalStorage } from './services/storage';
 import { rateCard, todayKey, weakTopics } from './services/srs';
 import { GameData, DEFAULT_GAME, GameEvent, applyEvent, computeStreak, LevelInfo } from './services/game';
+import { AdventureData, DEFAULT_ADVENTURE } from './services/adventure';
 import { confetti, floatText, setSoundMuted, sfx } from './services/effects';
+import Adventure from './components/Adventure';
 import Dashboard from './components/Dashboard';
 import ReviewSession from './components/ReviewSession';
 import Library from './components/Library';
@@ -16,10 +18,11 @@ import AICoach from './components/AICoach';
 import Sprint from './components/Sprint';
 import GameHud from './components/GameHud';
 
-type Tab = 'dashboard' | 'review' | 'sprint' | 'library' | 'quiz' | 'wrong' | 'coach';
+type Tab = 'dashboard' | 'adventure' | 'review' | 'sprint' | 'library' | 'quiz' | 'wrong' | 'coach';
 
 const TABS: { id: Tab; label: string; icon: React.FC<{ className?: string }> }[] = [
   { id: 'dashboard', label: '仪表盘', icon: LayoutDashboard },
+  { id: 'adventure', label: '赶考之路', icon: Swords },
   { id: 'review', label: '今日复习', icon: BookOpen },
   { id: 'sprint', label: '极速挑战', icon: Zap },
   { id: 'quiz', label: '智能刷题', icon: PencilRuler },
@@ -38,6 +41,7 @@ const App: React.FC = () => {
   const [aiQuestions, setAiQuestions] = useLocalStorage<QuizQuestion[]>(STORAGE_KEYS.aiQuestions, []);
   const [studyLog, setStudyLog] = useLocalStorage<Record<string, number>>(STORAGE_KEYS.studyLog, {});
   const [game, setGame] = useLocalStorage<GameData>(STORAGE_KEYS.game, DEFAULT_GAME);
+  const [adventure, setAdventure] = useLocalStorage<AdventureData>(STORAGE_KEYS.adventure, DEFAULT_ADVENTURE);
 
   // 游戏化反馈
   const [toasts, setToasts] = useState<{ id: number; text: string }[]>([]);
@@ -145,7 +149,18 @@ const App: React.FC = () => {
             aiKpCount={aiKps.length}
             onGoReview={() => setTab('review')}
             onGoSprint={() => setTab('sprint')}
+            onGoAdventure={() => setTab('adventure')}
             onGoWrong={() => setTab('wrong')}
+          />
+        )}
+        {tab === 'adventure' && (
+          <Adventure
+            kps={allKps}
+            questions={allQuestions}
+            adventure={adventure}
+            setAdventure={setAdventure}
+            onWrong={handleWrong}
+            onBattleEnd={(victory, stars, firstClear, finalBoss) => fireGame({ type: 'battleEnd', victory, stars, firstClear, finalBoss })}
           />
         )}
         {tab === 'review' && <ReviewSession kps={allKps} mastery={mastery} onRate={handleRate} />}

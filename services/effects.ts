@@ -58,6 +58,29 @@ export const sfx = {
   tick() {
     tone(1200, 0.03, 'square', 0.04);
   },
+  hit() {
+    tone(320, 0.07, 'square', 0.1);
+    tone(220, 0.1, 'square', 0.08, 0.05);
+  },
+  crit() {
+    tone(500, 0.06, 'square', 0.12);
+    tone(700, 0.06, 'square', 0.12, 0.05);
+    tone(950, 0.12, 'square', 0.1, 0.1);
+  },
+  hurt() {
+    tone(140, 0.22, 'sawtooth', 0.1);
+    tone(100, 0.25, 'sawtooth', 0.07, 0.08);
+  },
+  victory() {
+    [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.12, i * 0.11));
+  },
+  defeat() {
+    [392, 330, 262, 196].forEach((f, i) => tone(f, 0.25, 'triangle', 0.1, i * 0.16));
+  },
+  coin() {
+    tone(988, 0.06, 'square', 0.08);
+    tone(1319, 0.14, 'square', 0.08, 0.06);
+  },
 };
 
 /** 全屏彩带（升级 / 满分时刻） */

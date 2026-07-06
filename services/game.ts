@@ -20,6 +20,8 @@ export interface GameData {
     maxCombo: number;
     perfectRounds: number;
     subjects: SubjectId[];
+    stagesCleared: number;
+    finalBossDown: boolean;
   };
 }
 
@@ -29,7 +31,7 @@ export const DEFAULT_GAME: GameData = {
   soundOn: true,
   badges: [],
   daily: { date: '', review: 0, correct: 0, resolved: 0, rewarded: [] },
-  totals: { reviews: 0, answered: 0, correct: 0, resolved: 0, maxCombo: 0, perfectRounds: 0, subjects: [] },
+  totals: { reviews: 0, answered: 0, correct: 0, resolved: 0, maxCombo: 0, perfectRounds: 0, subjects: [], stagesCleared: 0, finalBossDown: false },
 };
 
 /** 科举功名进阶：等级越高，路越难走——就像真实的科考 */
@@ -99,6 +101,8 @@ export const BADGES: BadgeDef[] = [
   { id: 'streak-7', name: '七日之约', desc: '连续学习 7 天', icon: '📅', test: (_d, streak) => streak >= 7 },
   { id: 'sprint-150', name: '极速之王', desc: '极速挑战单局 150 分', icon: '⚡', test: (d) => d.bestSprint >= 150 },
   { id: 'perfect', name: '满分卷', desc: '一轮刷题（≥5题）全对', icon: '💯', test: (d) => d.totals.perfectRounds >= 1 },
+  { id: 'adventurer', name: '过关斩将', desc: '赶考之路通关 3 关', icon: '🗺️', test: (d) => (d.totals.stagesCleared ?? 0) >= 3 },
+  { id: 'palace', name: '殿试夺魁', desc: '击败金銮殿的至圣主考官', icon: '🐲', test: (d) => !!d.totals.finalBossDown },
   { id: 'zhuangyuan', name: '状元及第', desc: '修行至最高等级', icon: '👑', test: (d) => levelOf(d.xp).index === LEVELS.length - 1 },
 ];
 
@@ -107,7 +111,8 @@ export type GameEvent =
   | { type: 'answer'; correct: boolean; combo: number; subject: SubjectId }
   | { type: 'roundEnd'; right: number; total: number }
   | { type: 'resolve' }
-  | { type: 'sprintEnd'; score: number; maxCombo: number };
+  | { type: 'sprintEnd'; score: number; maxCombo: number }
+  | { type: 'battleEnd'; victory: boolean; stars: number; firstClear: boolean; finalBoss: boolean };
 
 export interface GameResult {
   data: GameData;
@@ -133,6 +138,9 @@ export function applyEvent(prev: GameData, ev: GameEvent, streak: number): GameR
   const d: GameData = JSON.parse(JSON.stringify(prev));
   const today = todayKey();
   if (d.daily.date !== today) d.daily = { date: today, review: 0, correct: 0, resolved: 0, rewarded: [] };
+  // 旧存档兼容
+  d.totals.stagesCleared ??= 0;
+  d.totals.finalBossDown ??= false;
 
   const before = levelOf(d.xp);
   let xpGain = 0;
@@ -176,6 +184,15 @@ export function applyEvent(prev: GameData, ev: GameEvent, streak: number): GameR
       xpGain += Math.round(ev.score / 2);
       d.bestSprint = Math.max(d.bestSprint, ev.score);
       d.totals.maxCombo = Math.max(d.totals.maxCombo, ev.maxCombo);
+      break;
+    case 'battleEnd':
+      if (ev.victory) {
+        xpGain += 40 + ev.stars * 10;
+        if (ev.firstClear) d.totals.stagesCleared += 1;
+        if (ev.finalBoss) d.totals.finalBossDown = true;
+      } else {
+        xpGain += 10; // 战败也长见识
+      }
       break;
   }
 

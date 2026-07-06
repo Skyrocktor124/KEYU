@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarClock, Flame, BookOpenCheck, Target, TrendingDown, Sparkles, ArrowRight, Zap, Trophy, CheckCircle2 } from 'lucide-react';
+import { CalendarClock, Flame, BookOpenCheck, Target, TrendingDown, Sparkles, ArrowRight, Zap, Trophy, CheckCircle2, Swords } from 'lucide-react';
 import { KnowledgePoint, MasteryRecord, WrongRecord } from '../types';
 import { SUBJECTS, SUBJECT_IDS, daysUntilExam, nextExamDate } from '../constants';
 import { buildReviewQueue, isMastered, weakTopics, todayKey } from '../services/srs';
@@ -15,10 +15,11 @@ interface Props {
   aiKpCount: number;
   onGoReview: () => void;
   onGoSprint: () => void;
+  onGoAdventure: () => void;
   onGoWrong: () => void;
 }
 
-const Dashboard: React.FC<Props> = ({ kps, mastery, wrong, studyLog, game, aiKpCount, onGoReview, onGoSprint, onGoWrong }) => {
+const Dashboard: React.FC<Props> = ({ kps, mastery, wrong, studyLog, game, aiKpCount, onGoReview, onGoSprint, onGoAdventure, onGoWrong }) => {
   const days = daysUntilExam();
   const exam = nextExamDate();
   const { due, fresh } = buildReviewQueue(kps, mastery);
@@ -42,13 +43,20 @@ const Dashboard: React.FC<Props> = ({ kps, mastery, wrong, studyLog, game, aiKpC
           </div>
           <p className="mt-1 text-sm text-slate-300">每天：清「到期复习」→ 打一局「极速挑战」→ 睡前清错题。三步走，功名自然来。</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <button
-            onClick={onGoReview}
+            onClick={onGoAdventure}
             className="flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-semibold px-5 py-3 rounded-xl transition"
           >
-            今日复习（{due.length + fresh.length}）
+            <Swords className="w-4 h-4" />
+            赶考之路
             <ArrowRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onGoReview}
+            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold px-5 py-3 rounded-xl transition"
+          >
+            今日复习（{due.length + fresh.length}）
           </button>
           <button
             onClick={onGoSprint}
