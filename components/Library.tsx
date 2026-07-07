@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, Sparkles, Newspaper, ScrollText, Search } fr
 import { KnowledgePoint, MasteryRecord, SubjectId } from '../types';
 import { SUBJECTS, SUBJECT_IDS } from '../constants';
 import { ANSWER_TEMPLATES } from '../data';
-import { aiAvailable, expandTopic, updateCurrentAffairs } from '../services/geminiService';
+import { aiAvailable, aiProviderName, expandTopic, updateCurrentAffairs } from '../services/geminiService';
 import { RichText, SubjectBadge, LevelDots, AiTag, Spinner } from './ui';
 
 interface Props {
@@ -203,10 +203,13 @@ const Library: React.FC<Props> = ({ kps, mastery, onAddKps }) => {
         <div className="text-center text-slate-400 py-12 text-sm">没有匹配「{query}」的考点，换个关键词试试。</div>
       )}
 
-      {!aiAvailable && (
+      {!aiAvailable ? (
         <p className="text-xs text-slate-400 text-center pt-4">
-          提示：在 .env.local 中配置 GEMINI_API_KEY 后，可解锁「AI 扩展专题 / 时政更新 / AI 出题 / AI 教练」等自我迭代能力。
+          提示：在 .env.local 中配置 <code className="bg-slate-100 px-1 rounded">DEEPSEEK_API_KEY</code> 或{' '}
+          <code className="bg-slate-100 px-1 rounded">GEMINI_API_KEY</code>（任选其一）后，可解锁「AI 扩展专题 / 时政更新 / AI 出题 / AI 教练」等自我迭代能力。
         </p>
+      ) : (
+        <p className="text-xs text-slate-400 text-center pt-4">当前 AI 提供商：{aiProviderName}</p>
       )}
     </div>
   );

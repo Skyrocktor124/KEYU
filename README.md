@@ -34,12 +34,27 @@
 
 ```bash
 npm install
-# 可选：启用 AI 功能
+npm run dev
+```
+
+### 启用 AI 功能（可选，二选一）
+
+AI 能力（AI 出题 / 扩展专题 / 时政更新 / AI 教练）支持 **DeepSeek** 或 **Gemini**，任选其一。
+复制 `.env.local.example` 为 `.env.local` 并填入 Key：
+
+```bash
+# 方案 A：DeepSeek（推荐国内使用）
+echo "DEEPSEEK_API_KEY=sk-你的Key" > .env.local
+npm run dev
+
+# 方案 B：Google Gemini
 echo "GEMINI_API_KEY=你的Key" > .env.local
 npm run dev
 ```
 
-> 未配置 API Key 时，知识库、复习引擎、刷题、错题本全部可离线使用，仅 AI 按钮隐藏。
+- **DeepSeek** 通过 Vite 开发服务器代理（`/ds-api`）转发请求：绕开浏览器 CORS，且 API Key 只留在本地、不会打进前端包，更安全。因此使用 DeepSeek 时请用 `npm run dev` 启动（`npm run preview` 静态预览不支持代理）。
+- 两个 Key 都配置时默认优先 DeepSeek，可用 `AI_PROVIDER=gemini` 强制切换；也可用 `DEEPSEEK_MODEL=deepseek-reasoner` 切换深度推理模型、`DEEPSEEK_BASE_URL` 指定中转网关。
+- 未配置任何 Key 时，知识库、复习引擎、刷题、错题本、四种游戏模式全部可离线使用，仅 AI 按钮隐藏。
 
 ## 使用建议（冲刺节奏）
 

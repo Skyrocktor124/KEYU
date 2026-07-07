@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Send, GraduationCap } from 'lucide-react';
 import { ChatMessage } from '../types';
-import { aiAvailable, askTutor } from '../services/geminiService';
+import { aiAvailable, aiProviderName, askTutor } from '../services/geminiService';
 import { RichText, Spinner } from './ui';
 
 interface Props {
@@ -52,7 +52,8 @@ const AICoach: React.FC<Props> = ({ weakContext }) => {
         <h2 className="mt-4 text-lg font-bold text-slate-800">AI 教练未启用</h2>
         <p className="mt-2 text-sm text-slate-500 max-w-md mx-auto">
           在项目根目录的 <code className="bg-slate-100 px-1 rounded">.env.local</code> 中配置{' '}
-          <code className="bg-slate-100 px-1 rounded">GEMINI_API_KEY</code> 后，这里会变成一位随叫随到、
+          <code className="bg-slate-100 px-1 rounded">DEEPSEEK_API_KEY</code> 或{' '}
+          <code className="bg-slate-100 px-1 rounded">GEMINI_API_KEY</code>（任选其一）后，这里会变成一位随叫随到、
           知道你所有薄弱点的北京文科特级教师。
         </p>
       </div>
