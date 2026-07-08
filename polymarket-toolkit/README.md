@@ -48,6 +48,17 @@ single      0.85   0.85  Will X happen by August 31?
 `$/100` = 每投入 $100 锁定的利润。**目标 $200 ⇒ 需要 `200 / (edge% ) × 100`
 的资金**。例如 1.5% 边际需要约 $13,300 成交额（可多笔累积）。
 
+## 从扫描到下单清单（executor.py）
+
+```bash
+python3 scanner.py --out opps.json
+python3 executor.py opps.json --bankroll 2000 --max-per-trade 500
+```
+
+executor 会按边际从高到低分配你的资金，输出每个机会**买哪几条腿、
+买多少份、花多少钱、锁定多少利润**的清单，以及总计。它不会替你下单——
+拿着清单到 Polymarket 界面手动执行，或接入你自己的 py-clob-client 循环。
+
 ## 执行（手动，最安全）
 
 1. 扫到机会后，立刻打开对应市场页面核对**订单簿深度**——
@@ -104,4 +115,5 @@ client.post_order(order, OrderType.GTC)
 ## 文件
 
 - `scanner.py` — 扫描器（零依赖，含 `--watch` 常驻模式）
-- `test_scanner.py` — 离线单元测试，验证全部套利数学
+- `executor.py` — 资金分配与下单清单生成器（不碰私钥，不自动下单）
+- `test_scanner.py`, `test_executor.py` — 16 个离线单元测试，验证全部数学
