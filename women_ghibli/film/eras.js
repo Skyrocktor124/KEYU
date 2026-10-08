@@ -128,75 +128,120 @@
   const armIK = (S, T, bend, a = 90, b = 86) => { const dx = T[0] - S[0], dy = T[1] - S[1], d = Math.min(Math.hypot(dx, dy), a + b - 0.5), ang = Math.atan2(dy, dx);
     const k = Math.acos(clamp((a * a + d * d - b * b) / (2 * a * d), -1, 1)), e = ang + bend * k, E = [S[0] + Math.cos(e) * a, S[1] + Math.sin(e) * a], u = unit(E, T); return [E, [E[0] + u[0] * b, E[1] + u[1] * b]]; };
 
+  // 一条肢体：沿 S→E→H 六个截面的宽度（三角肌 → 肘 → 前臂上段微鼓 → 腕）
+  function limb(S, E, Hd, ws) {
+    const lp = (a, b, q) => [lerp(a[0], b[0], q), lerp(a[1], b[1], q)];
+    const pts = [S, lp(S, E, 0.45), E, lp(E, Hd, 0.28), lp(E, Hd, 0.68), Hd], A = [], B = [];
+    for (let i = 0; i < pts.length; i++) { const [tx, ty] = unit(pts[Math.max(0, i - 1)], pts[Math.min(pts.length - 1, i + 1)]); A.push([pts[i][0] - ty * ws[i], pts[i][1] + tx * ws[i]]); B.push([pts[i][0] + ty * ws[i], pts[i][1] - tx * ws[i]]); }
+    const d0 = unit(pts[0], pts[1]);
+    return poly([...A, ...B.reverse(), [S[0] - d0[0] * ws[0] * 0.8, S[1] - d0[1] * ws[0] * 0.8]]);
+  }
+  // 手：放松的手掌＋并拢的手指，沿前臂方向
+  const HAND = [[-1, -4.8], [6, -5.6], [12, -5.2], [17.5, -3.6], [21.5, -1.2], [22.5, 0.8], [20, 2.8], [14, 4.4], [8, 5.6], [3, 6.2], [-1, 4.8]];
+  const handPath = (Hd, dir, flip) => { const a = Math.atan2(dir[1], dir[0]), c = Math.cos(a), s = Math.sin(a);
+    return poly(HAND.map(([x, y]) => { y *= flip; return [Hd[0] + x * c - y * s, Hd[1] + x * s + y * c]; })); };
+
   function girl(g, o) {
-    const { t, w, L } = o, b = o.br, C = k => mix(GC[k][0], GC[k][1], L), sd = o.sd, lw = o.lw;
+    const { t, w, L } = o, b = o.br, C = k => mix(GC[k][0], GC[k][1], L), sd = o.sd, lw = o.lw, px = 1 / o.s;
     const F = (path, fill, line, shade, shadeA = 0.4) => { g.fillStyle = fill; g.fill(path);
       if (shade) { g.save(); clipOff(g, path, sd, -sd * 0.25); g.globalAlpha = shadeA; g.fillStyle = shade; g.fill(path); g.restore(); }
-      if (line) { g.save(); g.globalAlpha = 0.6; g.strokeStyle = line; g.lineWidth = lw; g.lineJoin = 'round'; g.stroke(path); g.restore(); } };
+      if (line) { g.save(); g.globalAlpha = 0.55; g.strokeStyle = line; g.lineWidth = lw; g.lineJoin = 'round'; g.stroke(path); g.restore(); } };
     const hgrad = (x0, x1, c0, c1) => { const gr = g.createLinearGradient(x0, 0, x1, 0); gr.addColorStop(0, c0); gr.addColorStop(1, c1); return gr; };
-    const arm = (S, T, bend) => { const [E, Hd] = armIK(S, T, bend); F(limbPath(S, E, Hd, 9.6, 7.0, 5.0), C('skin'), LN.skin, C('skinS'), 0.35);
-      const u = unit(E, Hd), hp = new Path2D(); hp.ellipse(Hd[0] + u[0] * 7, Hd[1] + u[1] * 7, 10.5, 6, Math.atan2(u[1], u[0]), 0, TAU); F(hp, C('skin'), LN.skin); };
+    const soft = (path, fn) => { g.save(); g.clip(path); fn(); g.restore(); };
+    // 手臂：先画在身体后面（肩头由上身的三角肌轮廓盖住接缝）
+    const arm = (S, T, bend, flip, part = 'all') => {
+      const [E, Hd] = armIK(S, T, bend, 88, 82), dir = unit(E, Hd);
+      if (part !== 'hand') { const lp = limb(S, E, Hd, [11.6, 9.6, 7.0, 7.8, 6.0, 4.8]); F(lp, C('skin'), LN.skin, C('skinS'), 0.35);
+        soft(lp, () => { g.globalAlpha = 0.25; g.strokeStyle = C('skinS'); g.lineWidth = 2.2; g.beginPath(); g.moveTo(E[0] - dir[1] * 3, E[1] + dir[0] * 3); g.lineTo(E[0] + dir[0] * 6, E[1] + dir[1] * 6); g.stroke(); }); }
+      if (part !== 'arm') { const hp = handPath([Hd[0] - dir[0] * 1.5, Hd[1] - dir[1] * 1.5], dir, flip); F(hp, C('skin'), LN.skin, C('skinS'), 0.3);
+        if (o.s > 1) { g.save(); g.globalAlpha = 0.35; g.strokeStyle = LN.skin; g.lineWidth = px * 0.9; [[-1.2], [1.4]].forEach(([k]) => { const a = Math.atan2(dir[1], dir[0]); g.beginPath(); const p0 = [Hd[0] + Math.cos(a) * 13 - Math.sin(a) * k * flip, Hd[1] + Math.sin(a) * 13 + Math.cos(a) * k * flip]; g.moveTo(...p0); g.lineTo(p0[0] + Math.cos(a) * 6, p0[1] + Math.sin(a) * 6); g.stroke(); }); g.restore(); } }
+      return [E, Hd];
+    };
+    const hold = o.hold || 0;
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
-    // 远侧（右）手臂
-    arm([38, -482 + b], o.handR, o.bendR);
+    arm([40, -468 + b], o.handR, o.bendR, 1);
+    if (hold < 0.5) arm([-42, -468 + b], o.handL, o.bendL, -1);
+    else arm([-42, -468 + b], o.handL, o.bendL, -1, 'arm');
     // 腿、鞋
-    F(limbPath([-12, -96], [-12, -50], [-10, -12], 5.6, 4.6, 3.6), C('skin'), LN.skin, C('skinS'), 0.3);
-    F(limbPath([12, -96], [13, -50], [15, -12], 5.6, 4.6, 3.6), C('skin'), LN.skin, C('skinS'), 0.3);
-    F(poly(P.ellipsePts(-4, -6, 13, 5.2, 12)), C('shoe'), LN.hair); F(poly(P.ellipsePts(21, -5, 13, 5.2, 12)), C('shoe'), LN.hair);
-    // 裙：后摆被风吹开，前摆贴腿；外层雪纺更轻、飘得更开
+    F(limb([-12, -100], [-12, -54], [-10, -12], [6.2, 5.6, 4.6, 4.8, 4.2, 3.6]), C('skin'), LN.skin, C('skinS'), 0.3);
+    F(limb([12, -100], [13, -54], [15, -12], [6.2, 5.6, 4.6, 4.8, 4.2, 3.6]), C('skin'), LN.skin, C('skinS'), 0.3);
+    F(poly([[-14, -9], [-4, -12], [8, -8], [10, -3], [-2, -1], [-14, -3]]), C('shoe'), LN.hair); F(poly([[10, -8], [20, -11], [32, -7], [34, -2], [22, 0], [10, -2]]), C('shoe'), LN.hair);
+    // 裙：后摆被风吹开，前摆贴腿
     const push = 30 + 75 * w, left = [];
-    for (let i = 1; i <= 6; i++) { const q = i / 6; left.push([-32 - q * 14 - Math.pow(q, 1.6) * push + Math.sin(t * 4.6 - q * 6) * 4 * q, -398 + q * 326]); }
+    for (let i = 1; i <= 6; i++) { const q = i / 6; left.push([-32 - q * 16 - Math.pow(q, 1.6) * push + Math.sin(t * 4.6 - q * 6) * 4 * q, -400 + q * 328]); }
     const hl = left[5], hem = [];
     for (let i = 1; i <= 9; i++) { const q = i / 10; hem.push([lerp(hl[0], 40 - 8 * w, q), -70 + Math.sin(t * 6.1 - q * 10) * 5 * (1 - q * 0.7) + q * 4]); }
-    const skirt = poly([[-32, -398], ...left, ...hem, [40 - 8 * w, -70], [42, -160], [38, -262], [33, -340], [32, -398]]);
+    const skirt = poly([[-31, -400], ...left, ...hem, [40 - 8 * w, -70], [43, -160], [39, -262], [34, -340], [31, -400]]);
     F(skirt, hgrad(-100 - push * 0.5, 40, C('dressS'), C('dress')), LN.dress, C('dressS'), 0.3);
-    g.save(); g.clip(skirt); g.strokeStyle = C('dressS'); g.globalAlpha = 0.4; g.lineWidth = lw * 1.3;
-    for (let k = 1; k <= 4; k++) { const q = k / 5; g.beginPath(); g.moveTo(lerp(-26, 26, q), -390); g.quadraticCurveTo(lerp(-40 - push * 0.5, 30, q), -240, lerp(hl[0], 36, q) + Math.sin(t * 6.1 - q * 10) * 4, -78); g.stroke(); }
-    g.restore();
-    { const push2 = 50 + 125 * w, ol = [];
-      for (let i = 1; i <= 7; i++) { const q = i / 7; ol.push([-30 - q * 18 - Math.pow(q, 1.4) * push2 + Math.sin(t * 5.3 - q * 7 + 1) * 9 * q, -392 + q * 312]); }
+    soft(skirt, () => {                                              // 布料：柔和的明暗褶（模糊宽笔触）＋ 几道细褶线
+      g.filter = `blur(${Math.max(1, 4 * o.s)}px)`;
+      for (let k = 0; k < 7; k++) { const q = (k + 0.5) / 7, x0 = lerp(-26, 28, q), x1 = lerp(hl[0] + 10, 36, q) + Math.sin(t * 6.1 - q * 10) * 4, xm = lerp(-38 - push * 0.45, 32, q);
+        g.globalAlpha = k % 2 ? 0.32 : 0.22; g.strokeStyle = k % 2 ? C('dressS') : '#ffffff'; g.lineWidth = 9; g.beginPath(); g.moveTo(x0, -392); g.quadraticCurveTo(xm, -240, x1, -76); g.stroke(); }
+      g.filter = 'none'; g.globalAlpha = 0.35; g.strokeStyle = C('dressS'); g.lineWidth = lw;
+      for (let k = 1; k <= 4; k++) { const q = k / 5; g.beginPath(); g.moveTo(lerp(-24, 24, q), -380); g.quadraticCurveTo(lerp(-40 - push * 0.5, 30, q), -240, lerp(hl[0], 36, q) + Math.sin(t * 6.1 - q * 10) * 4, -78); g.stroke(); }
+    });
+    { const push2 = 50 + 125 * w, ol = [];                           // 外层雪纺：更轻、飘得更开，逆光里透亮
+      for (let i = 1; i <= 7; i++) { const q = i / 7; ol.push([-30 - q * 18 - Math.pow(q, 1.4) * push2 + Math.sin(t * 5.3 - q * 7 + 1) * 9 * q, -394 + q * 312]); }
       const e = ol[6], oh = [];
-      for (let i = 1; i <= 8; i++) { const q = i / 9; oh.push([lerp(e[0], 12, q), -80 + Math.sin(t * 6.8 - q * 9 + 2) * 9 * (1 - q * 0.6)]); }
-      const ov = poly([[-30, -392], ...ol, ...oh, [14, -84], [16, -250], [20, -392]]);
-      g.save(); g.globalAlpha = 0.42; g.fillStyle = C('dress'); g.fill(ov); g.globalAlpha = 0.18 + 0.3 * L; g.globalCompositeOperation = 'screen'; g.fillStyle = '#ffe2bc'; g.fill(ov); g.restore();
-      g.save(); g.globalAlpha = 0.3; g.strokeStyle = LN.dress; g.lineWidth = lw * 0.8; g.stroke(ov); g.restore(); }
-    // 脖子、后背、连衣裙上身、肩带、腰带
-    F(poly([[-2, -512], [18, -512], [20, -486 + b], [-4, -486 + b]]), C('skin'), LN.skin, C('skinS'), 0.4);
-    F(poly([[-18, -500 + b], [-40, -492 + b], [-50, -482 + b], [-53, -466 + b], [-47, -450], [45, -450], [50, -466 + b], [48, -482 + b], [38, -492 + b], [20, -500 + b]]), C('skin'), LN.skin, C('skinS'), 0.35);
-    g.save(); g.globalAlpha = 0.28; g.strokeStyle = LN.skin; g.lineWidth = lw * 0.9; [[-24, -478, -16, -462], [22, -478, 14, -462]].forEach(([a, c, d, e]) => { g.beginPath(); g.moveTo(a, c + b); g.quadraticCurveTo((a + d) / 2 + (a < 0 ? -4 : 4), (c + e) / 2 + b, d, e + b); g.stroke(); }); g.restore();
-    const bod = poly([[-47, -466 + b], [-36, -471 + b], [-24, -459 + b], [-8, -451 + b], [8, -451 + b], [24, -459 + b], [34, -471 + b], [45, -466 + b], [46, -444], [40, -420], [33, -398], [-33, -398], [-42, -420], [-48, -444]]);
+      for (let i = 1; i <= 8; i++) { const q = i / 9; oh.push([lerp(e[0], 12, q), -82 + Math.sin(t * 6.8 - q * 9 + 2) * 9 * (1 - q * 0.6)]); }
+      const ov = poly([[-30, -394], ...ol, ...oh, [14, -86], [16, -250], [20, -394]]);
+      g.save(); g.globalAlpha = 0.38; g.fillStyle = C('dress'); g.fill(ov); g.globalAlpha = 0.16 + 0.3 * L; g.globalCompositeOperation = 'screen'; g.fillStyle = '#ffe2bc'; g.fill(ov); g.restore();
+      g.save(); g.globalAlpha = 0.28; g.strokeStyle = LN.dress; g.lineWidth = lw * 0.8; g.stroke(ov); g.restore(); }
+    // 脖子
+    F(poly([[-4, -514], [16, -514], [21, -486 + b], [-6, -486 + b]]), C('skin'), LN.skin, C('skinS'), 0.45);
+    // 后背：斜方肌—肩头—三角肌—背阔肌—收腰，一条连续的轮廓
+    const back = poly([[-8, -496 + b], [-30, -490 + b], [-47, -482 + b], [-55, -468 + b], [-54, -450 + b], [-46, -438], [-40, -420], [-31, -401], [31, -401], [37, -420], [42, -438], [50, -450 + b], [51, -467 + b], [44, -480 + b], [27, -490 + b], [18, -496 + b]]);
+    F(back, hgrad(-56, 52, C('skinS'), C('skin')), LN.skin, C('skinS'), 0.3);
+    soft(back, () => { g.filter = `blur(${Math.max(1, 3 * o.s)}px)`; g.fillStyle = C('skinS'); g.globalAlpha = 0.35;
+      [[-20, -462, 12, 16, 0.3], [18, -462, 11, 15, -0.3]].forEach(([x, y, rx, ry, r]) => { g.beginPath(); g.ellipse(x, y + b, rx, ry, r, 0, TAU); g.fill(); });
+      g.fillRect(-2, -490 + b, 4, 40); g.filter = 'none'; });
+    const bod = poly([[-47, -458 + b], [-36, -462 + b], [-20, -452 + b], [0, -446 + b], [18, -452 + b], [32, -462 + b], [44, -458 + b], [44, -440], [39, -420], [32, -400], [-32, -400], [-41, -420], [-47, -440]]);
     F(bod, hgrad(-48, 46, C('dressS'), C('dress')), LN.dress, C('dressS'), 0.3);
-    [[-34, -469, -30, -496], [33, -469, 28, -496]].forEach(([a, c, d, e]) => { g.strokeStyle = LN.dress; g.globalAlpha = 0.6; g.lineWidth = 4.6; g.beginPath(); g.moveTo(a, c + b); g.lineTo(d, e + b); g.stroke(); g.globalAlpha = 1; g.strokeStyle = C('dress'); g.lineWidth = 3; g.stroke(); });
-    F(poly([[-34, -407], [34, -407], [33, -393], [-33, -393]]), C('sash'), LN.sash);
-    // 腰后蝴蝶结与飘带
-    [[0.3, -0.6], [1.7, 0.4]].forEach(([ph, tt]) => { const sp = flow(-6, -398, 70 + 34 * w, 8, w, t, ph, 7, 0.15 + tt * 0.2); F(ribbon(sp, q => 4.6 - q * 1.2), C('sash'), LN.sash); });
-    { const l1 = new Path2D(); l1.ellipse(-17, -403, 11, 6.5, -0.35, 0, TAU); const l2 = new Path2D(); l2.ellipse(7, -404, 11, 6.5, 0.35, 0, TAU); const k = new Path2D(); k.arc(-5, -400, 4.6, 0, TAU);
-      F(l1, C('sash'), LN.sash); F(l2, C('sash'), LN.sash); F(k, C('sash'), LN.sash); }
-    // 头（绕颈根转 tilt）：失去的侧脸——只露一弯脸颊、下颌和睫毛尖
-    const piv = [8, -500], ct = Math.cos(o.tilt), st = Math.sin(o.tilt), rot = ([x, y]) => [piv[0] + (x - piv[0]) * ct - (y - piv[1]) * st, piv[1] + (x - piv[0]) * st + (y - piv[1]) * ct];
-    g.save(); g.translate(...piv); g.rotate(o.tilt); g.translate(-piv[0], -piv[1]);
-    F(poly([[-28, -552], [-22, -584], [0, -597], [24, -591], [38, -574], [45, -557], [47, -545], [44, -535], [45, -525], [41, -511], [33, -501], [20, -497], [6, -501], [-12, -514], [-24, -532]]), C('skin'), LN.skin, C('skinS'), 0.3);
-    g.save(); g.strokeStyle = LN.hair; g.lineWidth = lw * 0.9; g.globalAlpha = 0.85; [[44, -537, 50, -540], [44.5, -535, 50, -535.5]].forEach(([a, c, d, e]) => { g.beginPath(); g.moveTo(a, c); g.lineTo(d, e); g.stroke(); }); g.restore();
-    const capP = poly([[-33, -552], [-29, -588], [-6, -605], [22, -601], [40, -586], [47, -568], [42, -566], [37, -560], [34, -548], [31, -534], [28, -520], [22, -508], [12, -500], [-4, -497], [-20, -503], [-30, -520]]);
-    F(capP, C('hair'), null);
-    { const ear = new Path2D(); ear.ellipse(30, -538, 5.5, 9, 0.15, 0, TAU); F(ear, C('skin'), LN.skin, C('skinS'), 0.4); }
+    soft(bod, () => { g.globalAlpha = 0.3; g.strokeStyle = C('dressS'); g.lineWidth = lw; [[-24, -444, -18, -404], [-6, -440, -4, -404], [12, -442, 10, -404]].forEach(([a, c, d, e]) => { g.beginPath(); g.moveTo(a, c); g.lineTo(d, e); g.stroke(); }); });
+    [[-36, -461, -29, -490], [32, -461, 25, -490]].forEach(([a, c, d, e]) => { g.strokeStyle = LN.dress; g.globalAlpha = 0.5; g.lineWidth = 4.4; g.beginPath(); g.moveTo(a, c + b); g.lineTo(d, e + b); g.stroke(); g.globalAlpha = 1; g.strokeStyle = C('dress'); g.lineWidth = 2.8; g.stroke(); });
+    F(poly([[-33, -409], [33, -409], [32, -395], [-32, -395]]), C('sash'), LN.sash);
+    [[0.3, -0.6], [1.7, 0.4]].forEach(([ph, tt]) => { const sp = flow(-6, -400, 72 + 34 * w, 9, w, t, ph, 7, 0.15 + tt * 0.2); F(ribbon(sp, q => 4.8 - q * 1.6 + Math.sin(q * 9 + t * 5 + ph) * 0.6), C('sash'), LN.sash); });
+    { const l1 = poly([[-5, -402], [-14, -412], [-24, -411], [-27, -403], [-20, -396], [-8, -398]]), l2 = poly([[-5, -402], [4, -413], [15, -413], [18, -405], [11, -397], [-1, -398]]), k = new Path2D(); k.ellipse(-5, -402, 4.6, 5.4, 0, 0, TAU);
+      F(l1, C('sash'), LN.sash, mix(GC.sash[0], '#000000', 0.25), 0.4); F(l2, C('sash'), LN.sash, mix(GC.sash[0], '#000000', 0.25), 0.4); F(k, C('sash'), LN.sash); }
+    // 头：绕颈根转 tilt
+    const piv = [8, -504], ct = Math.cos(o.tilt), st = Math.sin(o.tilt), rot = ([x, y]) => [piv[0] + (x - piv[0]) * ct - (y - piv[1]) * st, piv[1] + (x - piv[0]) * st + (y - piv[1]) * ct];
+    const inHead = fn => { g.save(); g.translate(...piv); g.rotate(o.tilt); g.translate(-piv[0], -piv[1]); fn(); g.restore(); };
+    inHead(() => {
+      const face = poly([[-20, -560], [0, -596], [26, -591], [40, -575], [46, -559], [48.5, -547], [45.5, -538], [47.5, -529], [44, -515], [37, -505], [25, -499], [10, -503], [-8, -516], [-18, -536]]);
+      F(face, hgrad(10, 48, C('skinS'), C('skin')), LN.skin, C('skinS'), 0.25);
+      soft(face, () => { g.filter = `blur(${Math.max(1, 2 * o.s)}px)`; g.fillStyle = 'rgba(232,120,120,.35)'; g.beginPath(); g.ellipse(42, -526, 6, 4, 0, 0, TAU); g.fill(); g.filter = 'none'; });
+      g.save(); g.strokeStyle = LN.hair; g.lineWidth = Math.max(lw * 0.8, px * 1.1); g.globalAlpha = 0.9;          // 睫毛尖从脸颊轮廓后探出来
+      [[45, -540, 51.5, -543.5], [45.5, -538, 51.5, -539], [45.5, -536.5, 50, -535]].forEach(([a, c, d, e]) => { g.beginPath(); g.moveTo(a, c); g.quadraticCurveTo((a + d) / 2, c - 1.5, d, e); g.stroke(); }); g.restore();
+    });
+    // 头发：发旋起，一簇簇沿后脑包下来、到肩下被风吹向左后；先画暗的底层，再画主簇、发丝、光泽和飞出的细发
+    const cap = poly([[42, -566], [37, -560], [32, -548], [28, -530], [14, -514], [-14, -506], [-34, -518], [-42, -546], [-40, -578], [-26, -603], [2, -613], [30, -602], [41, -582]].map(rot));
+    const CL = [[-36, -562, 200, 11, 0.0, 9, 0.18], [-28, -588, 236, 13, 0.7, 10, 0.1], [-14, -603, 258, 13, 1.5, 12, 0.05], [2, -607, 270, 12, 2.2, 13, 0.0],
+      [14, -598, 246, 11, 2.9, 12, -0.08], [22, -578, 222, 10, 3.6, 11, -0.14], [24, -548, 192, 8, 4.3, 10, -0.12], [-40, -540, 168, 9, 5.0, 8, 0.28], [-8, -594, 232, 10, 5.7, 11, 0.06]];
+    const clumps = CL.map(([x, y, len, hw, ph, amp, tr]) => { const sp = flow(...rot([x, y]), len, 16, w, t, ph, amp, tr);
+      return { sp, path: ribbon(sp, q => hw * (q < 0.22 ? 0.72 + q * 1.3 : 1) * Math.pow(1 - q, 0.85) + 0.7), hw }; });
+    const under = new Path2D(); clumps.forEach(c => under.addPath(c.path, new DOMMatrix().translate(-4, 5)));
+    g.save(); g.beginPath(); g.rect(-400, -515, 800, 600); g.clip(); g.fillStyle = mix(GC.hair[0], '#000000', 0.35); g.fill(under); g.restore();
+    g.fillStyle = C('hair'); g.fill(cap);
+    const hairAll = new Path2D(); hairAll.addPath(cap); clumps.forEach(c => hairAll.addPath(c.path));
+    const hg = g.createLinearGradient(0, -610, 0, -360); hg.addColorStop(0, C('hair')); hg.addColorStop(0.45, mix(GC.hair[0], GC.hairHi[1], 0.18 + 0.15 * L)); hg.addColorStop(1, C('hair'));
+    clumps.forEach(c => { g.fillStyle = hg; g.fill(c.path); });
+    soft(hairAll, () => {
+      clumps.forEach((c, k) => [-0.55, 0, 0.5].forEach((u, j) => {                   // 发丝：沿每簇的脊线，三条，明暗交替
+        g.globalAlpha = 0.18 + 0.14 * ((k + j) % 2); g.strokeStyle = (k + j) % 2 ? C('hairHi') : mix(GC.hair[0], '#000000', 0.4); g.lineWidth = Math.max(px * 0.9, 0.5);
+        g.beginPath(); c.sp.forEach((p, i) => { if (i < 2) return; const a = c.sp[Math.max(0, i - 1)], bb = c.sp[Math.min(c.sp.length - 1, i + 1)], [tx, ty] = unit(a, bb), q = i / (c.sp.length - 1), off = u * c.hw * Math.pow(1 - q, 0.85);
+          const x = p[0] - ty * off, y = p[1] + tx * off; i > 2 ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); }));
+      g.filter = `blur(${Math.max(1, 2.5 * o.s)}px)`; g.globalAlpha = 0.35 + 0.25 * L; g.strokeStyle = C('hairHi'); g.lineWidth = 5;   // 后脑一圈柔光（天使环）
+      const hc = rot([2, -566]); g.filter = `blur(${Math.max(2, 5 * o.s)}px)`; g.globalAlpha = 0.22 + 0.2 * L; g.lineWidth = 8; g.beginPath(); g.ellipse(hc[0], hc[1], 34, 30, o.tilt, -2.7, -1.0); g.stroke();
+      g.filter = 'none';
+    });
+    inHead(() => { const ear = poly([[27, -546], [33, -547], [36, -540], [35, -530], [31, -526], [27, -530]]); F(ear, C('skin'), LN.skin, C('skinS'), 0.45);
+      g.save(); g.globalAlpha = 0.4; g.strokeStyle = LN.skin; g.lineWidth = lw * 0.8; g.beginPath(); g.moveTo(31, -543); g.quadraticCurveTo(34, -538, 31, -531); g.stroke(); g.restore();
+      g.fillStyle = C('hair'); g.fill(poly([[25, -560], [31, -552], [30, -544], [27, -536], [24, -544]])); });   // 别在耳后的一缕
+    g.save(); g.strokeStyle = C('hair'); g.lineWidth = Math.max(px * 1.0, 0.8);          // 飞出的细发
+    [[-14, 180, 0.5, 20], [0, 220, 1.2, 24], [10, 196, 2.0, 22], [-22, 246, 2.7, 26], [18, 168, 3.4, 18], [6, 264, 4.2, 28], [-6, 150, 5.0, 16], [-30, 200, 5.6, 22], [20, 120, 6.3, 14]].forEach(([u, len, ph, amp]) => {
+      const sp = flow(...rot([-4 + u, -560]), len, 16, w * 1.15, t * 1.08, ph, amp, -0.05); g.beginPath(); sp.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); });
     g.restore();
-    // 长发：五缕叠成一片 + 中心底片，末端散开；再画发丝与飞出的细发
-    const hp = new Path2D(), spines = [];
-    hp.addPath(ribbon(flow(...rot([-4, -540]), 165, 10, w, t, 0.4, 6), q => lerp(31, 19, q)));
-    [[-28, 190, 3.8, 8], [-20, 215, 0, 9], [-10, 240, 0.8, 10], [0, 262, 1.6, 12], [10, 245, 4.4, 11], [18, 228, 2.3, 11], [26, 200, 3.1, 9]].forEach(([u, len, ph, amp]) => {
-      const sp = flow(...rot([-6 + u * 0.9, -542 + Math.abs(u) * 0.4]), len, 13, w, t, ph, amp); spines.push(sp);
-      hp.addPath(ribbon(sp, q => q < 0.2 ? lerp(14, 12, q / 0.2) : lerp(12, 1.4, Math.pow((q - 0.2) / 0.8, 1.2)))); });
-    const hg = g.createLinearGradient(0, -560, 0, -380); hg.addColorStop(0, C('hair')); hg.addColorStop(1, mix(GC.hair[0], GC.hairHi[1], 0.25 + 0.2 * L)); g.fillStyle = hg; g.fill(hp);
-    g.save(); g.clip(hp); g.strokeStyle = C('hairHi'); g.lineWidth = lw * 0.9;
-    spines.forEach((sp, k) => [-4, 3].forEach(dx => { g.globalAlpha = 0.28 + 0.1 * (k % 2); g.beginPath(); sp.forEach(([x, y], i) => i ? g.lineTo(x + dx, y + dx * 0.4) : g.moveTo(x + dx, y + dx * 0.4)); g.stroke(); }));
-    g.restore();
-    g.save(); g.strokeStyle = C('hair'); g.lineWidth = Math.max(1.1 / o.s, 0.9);
-    [[-14, 170, 0.5, 20], [0, 210, 1.2, 24], [10, 190, 2.0, 22], [-20, 240, 2.7, 26], [18, 160, 3.4, 18], [6, 260, 4.2, 28], [-6, 150, 5.0, 16]].forEach(([u, len, ph, amp]) => {
-      const sp = flow(...rot([-4 + u, -536]), len, 14, w * 1.15, t * 1.08, ph, amp, -0.05); g.beginPath(); sp.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); });
-    g.restore();
-    // 近侧（左）手臂：画在头发上
-    arm([-44, -482 + b], o.handL, o.bendL);
+    if (hold >= 0.5) arm([-42, -468 + b], o.handL, o.bendL, -1, 'all');                // 抬手别头发：前臂和手压在头发上
     g.restore();
   }
   // 把少女画进离屏，算出剪影外缘的轮廓光，再合成（光从右前方来：保留「自身 − 向左下平移的自身」）
@@ -315,7 +360,7 @@
     const gx = 820 - q * 46, gy = 1310 + q * 8, s = 1.75 + q * 0.07;
     const hold = sm(9.4, 10.6, t) * (1 - sm(11.9, 12.9, t));
     const pose = { t, w, L: 0.3 + 0.3 * sm(0.2, 0.55, p), br: Math.sin(t * 1.9) * 1.6, tilt: -0.04 - 0.03 * hold,
-      handL: [lerp(-50, 16, hold), lerp(-300, -550, hold)], bendL: lerp(1, -1, sm(9.4, 10.2, t) * (1 - sm(12.2, 12.9, t))), handR: [48 + Math.sin(t * 1.3) * 2, -302], bendR: -1, s, sd: 4, lw: 1.5 / s + 0.5 };
+      hold, handL: [lerp(-58, 20, hold), lerp(-306, -526, hold)], bendL: lerp(1, -1, sm(9.4, 10.2, t) * (1 - sm(12.2, 12.9, t))), handR: [52 + Math.sin(t * 1.3) * 2, -310], bendR: -1, s, sd: 4, lw: 1.5 / s + 0.5 };
     drawGirl(g, lg => lg.setTransform(s, 0, 0, s, gx, gy), pose, mix('#f0b0b8', '#ffd59c', sm(0.25, 0.6, p)), 0.75 + 0.25 * sm(0.2, 0.55, p), 4.2);
     // 前景：失焦的草尖和光斑
     g.save(); g.filter = 'blur(9px)'; g.strokeStyle = mix('#151726', '#2a3a2a', p); g.lineCap = 'round';
@@ -387,10 +432,10 @@
   // ---------- 镜头编排 ----------
   const camA = t => { const q = eio(t / 7); return { z: 1 + 0.06 * q, cx: 960 - 40 * q, cy: 540 + 18 * q }; };
   const camCD = t => { const a = eio((t - 12.5) / 6), b = eio((t - 18.2) / 6.3); return { z: lerp(lerp(2.16, 2.0, a), 1.0, b), cx: lerp(lerp(842, 860, a), 960, b), cy: lerp(648, 540, b) }; };
-  const poseA = t => ({ t, w: windAt(t), L: 0.1, br: Math.sin(t * 1.9) * 1.6, tilt: 0, handL: [-50, -300], bendL: 1, handR: [48, -302], bendR: -1 });
+  const poseA = t => ({ t, w: windAt(t), L: 0.1, br: Math.sin(t * 1.9) * 1.6, tilt: 0, handL: [-58, -306], bendL: 1, handR: [52, -310], bendR: -1 });
   const poseCD = t => { const op = sm(14.2, 15.8, t) * (1 - sm(20.6, 22.8, t)), sway = Math.sin(t * 1.6) * 6 * op;
     return { t, w: windAt(t), L: sm(0.2, 0.7, dayP(t)), br: Math.sin(t * 1.9) * 1.6 + op * 2, tilt: -0.13 * op,
-      handL: [lerp(-50, -205, op), lerp(-300, -555, op) + sway], bendL: lerp(1, -1, op), handR: [lerp(48, 214, op), lerp(-302, -566, op) - sway], bendR: lerp(-1, 1, op) }; };
+      handL: [lerp(-58, -205, op), lerp(-306, -555, op) + sway], bendL: lerp(1, -1, op), handR: [lerp(52, 214, op), lerp(-310, -566, op) - sway], bendR: lerp(-1, 1, op) }; };
   const SHOTS = [
     { t0: 0, t1: 6.9, render: (g, t) => { const cam = camA(t); world(g, t, cam, poseA(t)); return null; } },
     { t0: 6.1, t1: 13.3, render: (g, t) => shotB(g, t) },
