@@ -1,0 +1,28 @@
+{
+  "grammar": "y5_kinetic_type",
+  "duration": 20,
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "data": {
+    "palette": [
+      ["#2B0F3A", "#FFF4E8"],
+      ["#E8436B", "#FFFFFF"],
+      ["#5B2A86", "#FFFFFF"],
+      ["#FFD23F", "#2B0F3A"],
+      ["#C2185B", "#FFFFFF"],
+      ["#2B0F3A", "#FFF4E8"],
+      ["#F4EFE6", "#C2185B"]
+    ]
+  },
+  "cues": [
+    { "at": 0.0,  "kind": "title", "text": "致每一个她", "sub": "这一段，为你加油" },
+    { "at": 2.6,  "kind": "point", "text": "勇敢", "sub": "去做你想做的自己", "data": { "label": "01", "key": "自己" } },
+    { "at": 5.0,  "kind": "point", "text": "自由", "sub": "人生没有标准答案", "data": { "label": "02", "key": "标准答案" } },
+    { "at": 7.4,  "kind": "point", "text": "坚韧", "sub": "跌倒了，也能再站起来", "data": { "label": "03", "key": "再站起来" } },
+    { "at": 9.8,  "kind": "point", "text": "闪耀", "sub": "你本来就很好", "data": { "label": "04", "key": "很好" } },
+    { "at": 13.0, "kind": "number", "sub": "你值得的热爱", "data": { "value": 100, "suffix": "%", "label": "每一天" } },
+    { "at": 15.4, "kind": "title", "text": "她力量 加油", "sub": "致敬每一个认真生活的你", "data": { "key": "认真生活" } },
+    { "at": 17.2, "kind": "highlight", "data": { "word": "加油" } }
+  ]
+}
