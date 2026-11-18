@@ -48,13 +48,29 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .brand i::before { left: 3px; } .brand i::after { right: 3px; }
 #bp { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 #bp .row { display: flex; align-items: center; gap: 6px; }
-#bp .label { font-size: 11px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
+#bp .label, #quests .label { font-size: 11px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
 #bp .name { font-family: var(--display); font-size: 18px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #bp .nav { width: 26px; height: 26px; border-radius: 8px; background: var(--panel-hi); display: grid; place-items: center; font-weight: 900; }
 .bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.12); overflow: hidden; }
 .bar > b { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #5fd6ff, #8affc1); transition: width .35s cubic-bezier(.2,.9,.3,1.2); }
 #bp .meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
 #bp.done .bar > b { background: linear-gradient(90deg, var(--accent), #ffe58a); }
+
+#quests { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+#quests .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0; width: 100%; text-align: left; }
+#quests .label b { color: var(--ink); font-variant-numeric: tabular-nums; }
+#quests .streak { font-size: 12px; color: var(--accent); font-weight: 900; white-space: nowrap; }
+#quests .chev { color: var(--muted); font-weight: 900; transition: transform .2s; }
+#quests.closed .chev { transform: rotate(-90deg); }
+#qList { display: flex; flex-direction: column; gap: 8px; }
+#quests.closed #qList { display: none; }
+.quest { display: flex; flex-direction: column; gap: 4px; }
+.quest .qrow { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+.quest .qrow span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+.quest .bar { height: 5px; }
+.quest.done .qrow span:first-child { text-decoration: line-through; color: var(--muted); }
+.quest.done .bar > b { background: linear-gradient(90deg, var(--good), #b5ffcf); }
+.stats-line { font-size: 12.5px; }
 
 /* top-right: level */
 #tr { position: fixed; top: calc(12px + env(safe-area-inset-top,0px)); right: max(16px, env(safe-area-inset-right,0px)); width: min(230px, 44vw); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
@@ -168,6 +184,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     <div class="bar"><b id="bpFill"></b></div>
     <div class="meta"><span id="bpDesc">把蓝色虚影填满</span><span id="bpCount">0/0</span></div>
   </div>
+  <div id="quests" class="glass">
+    <button class="head" id="qHead" aria-expanded="true"><span class="label">今日任务 <b id="qCount">0/3</b></span><span><span class="streak" id="streak"></span> <span class="chev">▾</span></span></button>
+    <div id="qList"></div>
+  </div>
 </div>
 
 <div id="tr" class="glass">
@@ -186,6 +206,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 <div id="tools" class="glass">
   <button class="tool" id="tRotate" data-tip="旋转积木 (R)" aria-label="旋转积木"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button>
   <button class="tool" id="tErase" data-tip="拆除模式 (E)" aria-label="拆除模式"><svg viewBox="0 0 24 24"><path d="M7 21h10"/><path d="M5 7h14l-1.2 11.2A2 2 0 0 1 15.8 20H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 7V4h6v3"/></svg></button>
+  <button class="tool" id="tPaint" data-tip="刷色模式 (P)" aria-label="刷色模式"><svg viewBox="0 0 24 24"><path d="M4 4h12v5H4z"/><path d="M16 6.5h3v5h-8v3"/><path d="M10 14.5h2v6h-2z"/></svg></button>
   <button class="tool" id="tUndo" data-tip="撤销 (Ctrl+Z)" aria-label="撤销"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
   <button class="tool" id="tRedo" data-tip="重做 (Ctrl+Y)" aria-label="重做"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
   <button class="tool" id="tBp" data-tip="显示/隐藏图纸 (B)" aria-label="显示或隐藏图纸"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18M9 5v14"/></svg></button>
@@ -293,12 +314,52 @@ function genBridge() {
   for (let x = -6; x <= 5; x += 1) if (x % 2 === 0) { c.push([x, 4, -1]); c.push([x, 4, 0 + 0]); }
   return c.filter((v, i, a) => a.findIndex(w => w[0] === v[0] && w[1] === v[1] && w[2] === v[2]) === i);
 }
+function genHeart() {
+  const art = ['.XX...XX.', 'XXXX.XXXX', 'XXXXXXXXX', 'XXXXXXXXX', '.XXXXXXX.', '..XXXXX..', '...XXX...', '....X....'];
+  const c = []; art.forEach((row, z) => [...row].forEach((ch, x) => { if (ch === 'X') c.push([x - 4, 0, z - 4]); })); return c;
+}
+function genLighthouse() {
+  const c = [];
+  for (let x = -2; x <= 1; x++) for (let z = -2; z <= 1; z++) c.push([x, 0, z]);
+  for (let k = 1; k <= 8; k++) for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) if (!(x === 0 && z === 0)) { if (k < 3 && z === 1 && x === 0) continue; c.push([x, k, z]); }
+  for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) c.push([x, 9, z]);
+  c.push([0, 10, 0]); c.push([0, 11, 0]);
+  return c;
+}
+function genCastle() {
+  const set = new Map(); const add = (x, k, z) => set.set(x + ',' + k + ',' + z, [x, k, z]);
+  for (let k = 0; k < 4; k++) for (let x = -5; x <= 4; x++) for (let z = -1; z <= 0; z++) { if (k < 3 && (x === -1 || x === 0)) continue; add(x, k, z); }
+  for (let x = -5; x <= 4; x += 2) add(x, 4, -1);
+  for (const x0 of [-7, 5]) { for (let k = 0; k < 6; k++) for (let x = x0; x <= x0 + 1; x++) for (let z = -2; z <= 1; z++) add(x, k, z); add(x0, 6, -2); add(x0 + 1, 6, 1); }
+  return [...set.values()];
+}
+const shift = (cells, dx, dz) => cells.map(([x, k, z]) => [x + dx, k, z + dz]);
 const BLUEPRINTS = [
-  { id:'pyramid', name:'阶梯金字塔', desc:'四层台阶，由下往上', cells: genPyramid(), xp: 300 },
-  { id:'cabin',   name:'林间小屋',   desc:'留出门和窗，再盖屋顶', cells: genCabin(), xp: 500 },
-  { id:'tower',   name:'守望塔',     desc:'中空塔身，顶上有垛口', cells: genTower(), xp: 450 },
-  { id:'bridge',  name:'石拱桥',     desc:'两座桥墩托起桥面', cells: genBridge(), xp: 350 },
+  { id:'pyramid',    name:'阶梯金字塔', desc:'四层台阶，由下往上', cells: genPyramid(), xp: 300 },
+  { id:'heart',      name:'爱心马赛克', desc:'用薄板铺满就行', cells: shift(genHeart(), -10, -1), xp: 200 },
+  { id:'cabin',      name:'林间小屋',   desc:'留出门和窗，再盖屋顶', cells: shift(genCabin(), -9, 7), xp: 500 },
+  { id:'tower',      name:'守望塔',     desc:'中空塔身，顶上有垛口', cells: shift(genTower(), 8, -2), xp: 450 },
+  { id:'bridge',     name:'石拱桥',     desc:'两座桥墩托起桥面', cells: shift(genBridge(), 1, 12), xp: 350 },
+  { id:'lighthouse', name:'海边灯塔',   desc:'塔顶用夜光色更好看', cells: shift(genLighthouse(), 12, 3), xp: 600 },
+  { id:'castle',     name:'城堡大门',   desc:'两座角楼夹着城门', cells: shift(genCastle(), -2, -12), xp: 800 },
 ];
+const bpCenter = bp => { let x = 0, z = 0; bp.cells.forEach(c => { x += c[0] + 0.5; z += c[2] + 0.5; }); return new THREE.Vector3(x / bp.cells.length, 1.5, z / bp.cells.length); };
+
+const QUEST_POOL = [
+  { id:'place30',  ev:'place',  goal:30, text:'放置 30 块积木' },
+  { id:'place80',  ev:'place',  goal:80, text:'放置 80 块积木' },
+  { id:'colors4',  ev:'color',  goal:4,  text:'用 4 种不同颜色', set:true },
+  { id:'colors6',  ev:'color',  goal:6,  text:'用 6 种不同颜色', set:true },
+  { id:'combo8',   ev:'combo',  goal:8,  text:'打出 8 连击', max:true },
+  { id:'combo15',  ev:'combo',  goal:15, text:'打出 15 连击', max:true },
+  { id:'height8',  ev:'height', goal:8,  text:'搭到 8 层高', max:true },
+  { id:'plates12', ev:'plate',  goal:12, text:'放置 12 块薄板', need:'p12' },
+  { id:'slopes6',  ev:'slope',  goal:6,  text:'放置 6 块斜坡', need:'s22' },
+  { id:'paint10',  ev:'paint',  goal:10, text:'给 10 块积木刷色' },
+  { id:'bp25',     ev:'bpcell', goal:25, text:'在图纸上填满 25 格' },
+  { id:'lucky1',   ev:'lucky',  goal:1,  text:'触发 1 次幸运积木' },
+];
+const QUEST_XP = 120, QUEST_ALL_XP = 250;
 
 const ACHS = [
   { id:'first', name:'第一块', desc:'放下你的第一块积木', test: s => s.placed >= 1 },
@@ -314,18 +375,22 @@ const ACHS = [
   { id:'demo',  name:'拆迁队', desc:'拆除 20 块积木', test: s => s.removed >= 20 },
   { id:'bp1',   name:'照图施工', desc:'完成一张图纸', test: s => s.bpDone.length >= 1 },
   { id:'bpall', name:'总设计师', desc:'完成全部图纸', test: s => s.bpDone.length >= BLUEPRINTS.length },
+  { id:'lucky10', name:'好运连连', desc:'触发 10 次幸运积木', test: s => s.lucky >= 10 },
+  { id:'paint30', name:'粉刷匠', desc:'给 30 块积木刷色', test: s => s.painted >= 30 },
+  { id:'daily1', name:'日日精进', desc:'完成一天的全部任务', test: s => s.dailyAllDone >= 1 },
+  { id:'streak3', name:'坚持不懈', desc:'连续 3 天来搭积木', test: s => s.streak >= 3 },
   { id:'night', name:'夜间施工', desc:'切换到夜晚', test: s => s.nightSeen },
   { id:'lv10',  name:'十级工匠', desc:'达到 Lv.10', test: s => levelInfo(s.xp).l >= 10 },
   { id:'all',   name:'全色收藏家', desc:'解锁全部颜色和零件', test: s => levelInfo(s.xp).l >= UNLOCKS.length + 1 },
 ];
 
 /* ================= persistent state ================= */
-let prog = { xp:0, placed:0, removed:0, maxTop:0, maxCombo:0, colorsUsed:[], achs:[], bpDone:[], bp:'pyramid', bpShow:true, night:false, nightSeen:false, muted:false, tipDone:false };
+let prog = { xp:0, placed:0, removed:0, maxTop:0, maxCombo:0, colorsUsed:[], achs:[], bpDone:[], bp:'pyramid', bpShow:true, night:false, nightSeen:false, muted:false, tipDone:false, lucky:0, painted:0, sinceLucky:0, streak:0, lastDay:'', daily:null, dailyAllDone:0, questsOpen:null };
 let saved = null;
 try { saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) {}
 if (saved && saved.prog) Object.assign(prog, saved.prog);
 
-const state = { type:'b24', color:'red', rot:0, eraser:false };
+const state = { type:'b24', color:'red', rot:0, mode:'build' };
 if (saved && saved.sel) { if (T[saved.sel.type]) state.type = saved.sel.type; if (C[saved.sel.color]) state.color = saved.sel.color; }
 
 /* ================= three setup ================= */
@@ -489,6 +554,7 @@ function sArp(notes, step, type) { const a = audio(); if (!a) return; const t = 
 const sLevel = () => sArp([523, 659, 784, 1047, 1319], 0.08);
 const sAch = () => sArp([784, 1175], 0.1, 'sine');
 const sDone = () => sArp([523, 659, 784, 659, 784, 1047, 1319, 1568], 0.09);
+const sLucky = () => sArp([1047, 1319, 1568, 2093, 2637], 0.05, 'sine');
 const sTick = () => { const a = audio(); if (!a) return; tone(a, a.currentTime, 1200, 'sine', 0.04, 0.06); };
 
 /* ================= effects ================= */
@@ -569,10 +635,10 @@ function updateHover() {
   if (!pointerIn) { ghost.visible = false; placement = null; hoverId = null; return; }
   const hit = pick();
   placement = null; hoverId = null;
-  if (state.eraser) {
+  if (state.mode !== 'build') {
     if (hit && hit.object !== baseplate) {
       const b = bricks.get(hit.object.userData.id); hoverId = b.id;
-      ghost.geometry = brickGeo(b.type); ghost.material = eraseMat;
+      ghost.geometry = brickGeo(b.type); ghost.material = state.mode === 'erase' ? eraseMat : ghostMat;
       ghost.position.copy(b.mesh.position); ghost.rotation.y = b.mesh.rotation.y; ghost.scale.set(1.04, 1.04, 1.04);
       ghost.visible = true;
     } else ghost.visible = false;
@@ -596,10 +662,12 @@ const bpNow = new THREE.InstancedMesh(bpGeo, bpMatNow, 400); const bpLater = new
 bpNow.renderOrder = 1; bpLater.renderOrder = 1; scene.add(bpNow, bpLater);
 const curBp = () => BLUEPRINTS.find(b => b.id === prog.bp) || BLUEPRINTS[0];
 const cellFilled = ([x, k, z]) => occ.has(key(x, 3 * k, z)) || occ.has(key(x, 3 * k + 1, z)) || occ.has(key(x, 3 * k + 2, z));
-let bpCompleteFlag = false;
+let bpTrack = { id: null, n: 0 };
 function refreshBlueprint(fromPlay) {
   const bp = curBp(); const missing = bp.cells.filter(c => !cellFilled(c));
   const filled = bp.cells.length - missing.length;
+  if (fromPlay && bpTrack.id === bp.id && filled > bpTrack.n) questEvent('bpcell', filled - bpTrack.n);
+  bpTrack = { id: bp.id, n: filled };
   const minK = missing.length ? Math.min(...missing.map(c => c[1])) : -1;
   const m = new THREE.Matrix4(); let a = 0, b = 0;
   if (prog.bpShow) missing.forEach(c => { m.makeTranslation(c[0] + 0.5, (3 * c[1] + 1.5) * PH, c[2] + 0.5); if (c[1] === minK) bpNow.setMatrixAt(a++, m); else bpLater.setMatrixAt(b++, m); });
@@ -616,7 +684,7 @@ function refreshBlueprint(fromPlay) {
     toast('图', `图纸完成：${bp.name}`, `+${bp.xp} XP 奖励`);
     gainXp(bp.xp, new THREE.Vector3(0, 6, 0));
     const next = BLUEPRINTS.find(b => !prog.bpDone.includes(b.id));
-    if (next) setTimeout(() => toast('›', '新图纸已就绪', `点击图纸卡片的箭头切换到「${next.name}」`), 1800);
+    if (next) setTimeout(() => { prog.bp = next.id; refreshBlueprint(false); focusOn(bpCenter(next)); toast('›', `下一张图纸：${next.name}`, '镜头已经移过去了，接着搭'); scheduleSave(); }, 2600);
     checkAchs();
   }
 }
@@ -634,8 +702,9 @@ function gainXp(n, at) {
     setTimeout(() => { sLevel(); burst(at ? at.clone() : new THREE.Vector3(0, 3, 0), 60, true); toast(String(after), `升到 Lv.${after}！`, names ? `解锁：${names}` : RANKS[Math.min(RANKS.length - 1, Math.floor((after - 1) / 3))]); }, 150);
     document.getElementById('lv').classList.remove('pop'); void document.getElementById('lv').offsetWidth; document.getElementById('lv').classList.add('pop');
     buildTray(newly);
+    renderQuests();
   }
-  refreshHud();
+  refreshHud(); scheduleSave();
 }
 function refreshHud() {
   const info = levelInfo(prog.xp);
@@ -667,7 +736,14 @@ function onPlaced(b) {
   const top = new THREE.Vector3(b.x + W / 2, (b.y + t.h) * PH + 0.3, b.z + D / 2);
   sClick(1 + Math.min(combo, 16) * 0.035);
   burst(new THREE.Vector3(b.x + W / 2, b.y * PH + 0.05, b.z + D / 2), 8, false);
-  const xp = (t.kind === 'plate' ? 6 : 10) * mult;
+  let xp = (t.kind === 'plate' ? 6 : 10) * mult;
+  prog.sinceLucky = (prog.sinceLucky || 0) + 1;
+  if (Math.random() < 0.045 || prog.sinceLucky >= 35) {
+    prog.sinceLucky = 0; prog.lucky++;
+    const bonus = 40 + Math.floor(Math.random() * 4) * 20; xp += bonus;
+    setTimeout(() => { sLucky(); burst(top.clone(), 36, true); floater(`幸运积木！+${bonus}`, top.clone().add(new THREE.Vector3(0, 1.2, 0)), '#ffe066'); }, 220);
+    questEvent('lucky', 1);
+  }
   floater(`+${xp}${mult > 1 ? ' ×' + mult : ''}`, top, mult > 1 ? '#ffc934' : null);
   if (combo >= 3) {
     comboEl.textContent = `连击 ×${combo}`; comboEl.classList.add('show');
@@ -675,6 +751,10 @@ function onPlaced(b) {
     clearTimeout(comboTimer); comboTimer = setTimeout(() => comboEl.classList.remove('show'), 1500);
   }
   prog.placed++;
+  questEvent('place', 1); questEvent('color', b.color); questEvent('combo', combo); questEvent('height', Math.floor((b.y + t.h) / 3));
+  if (t.kind === 'plate') questEvent('plate', 1);
+  if (t.kind === 'slope') questEvent('slope', 1);
+  if (!prog.tipDone && prog.placed >= 3) { prog.tipDone = true; document.getElementById('tip').hidden = true; }
   prog.maxTop = Math.max(prog.maxTop, b.y + t.h);
   if (!prog.colorsUsed.includes(b.color)) prog.colorsUsed.push(b.color);
   gainXp(xp, top);
@@ -697,7 +777,19 @@ function erase(id) {
   sRemove(); burst(b.mesh.position.clone().add(new THREE.Vector3(0, 0.4, 0)), 10, false);
   prog.removed++; checkAchs(); afterChange(true);
 }
+function recolor(b, c) { b.color = c; b.mesh.material = brickMat(c); }
+function paint(id) {
+  const b = bricks.get(id); if (!b || b.color === state.color) return;
+  const from = b.color; recolor(b, state.color);
+  undoStack.push({ op: 'paint', d: { x: b.x, y: b.y, z: b.z }, from, to: state.color }); redoStack.length = 0;
+  sClick(1.35); burst(b.mesh.position.clone().add(new THREE.Vector3(0, T[b.type].h * PH, 0)), 10, false);
+  anims.push({ mesh: b.mesh, t0: performance.now(), dur: 160, to: b.mesh.position.y, from: b.mesh.position.y + 0.25 });
+  prog.painted++; if (!prog.colorsUsed.includes(state.color)) prog.colorsUsed.push(state.color);
+  questEvent('paint', 1); questEvent('color', state.color);
+  gainXp(2); checkAchs(); afterChange(false);
+}
 function applyOp(op, inverse) {
+  if (op.op === 'paint') { const id = occ.get(key(op.d.x, op.d.y, op.d.z)); const b = id && bricks.get(id); if (b) recolor(b, inverse ? op.from : op.to); return; }
   const adding = (op.op === 'add') !== inverse;
   if (adding) addBrick(op.d, true); else { const id = occ.get(key(op.d.x, op.d.y, op.d.z)); if (id) removeBrick(id); }
 }
@@ -713,8 +805,61 @@ function eyedrop() {
 let saveTimer = null;
 function afterChange(fromPlay) {
   refreshBlueprint(fromPlay); updateHover(); refreshHud();
-  clearTimeout(saveTimer); saveTimer = setTimeout(save, 400);
+  scheduleSave();
 }
+function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(save, 400); }
+
+/* ================= daily quests ================= */
+function todayStr(off) { const d = new Date(); d.setDate(d.getDate() + (off || 0)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function seeded(str) { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } h |= 1; return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; }; }
+function ensureDaily() {
+  const today = todayStr();
+  if (prog.daily && prog.daily.date === today) return false;
+  const lv = levelInfo(prog.xp).l, rnd = seeded(today);
+  const pool = QUEST_POOL.filter(q => !q.need || lv >= unlockLevel(q.need));
+  const picks = [], evs = new Set();
+  while (picks.length < 3 && pool.length) { const q = pool.splice(Math.floor(rnd() * pool.length), 1)[0]; if (evs.has(q.ev)) continue; evs.add(q.ev); picks.push({ id: q.id, n: 0, done: false }); }
+  prog.daily = { date: today, quests: picks, colors: [], all: false };
+  const first = !prog.lastDay;
+  prog.streak = prog.lastDay === todayStr(-1) ? (prog.streak || 0) + 1 : 1;
+  prog.lastDay = today;
+  setTimeout(() => {
+    if (prog.streak > 1) { const bonus = Math.min(200, 30 * prog.streak); sAch(); toast(String(prog.streak), `连续搭建第 ${prog.streak} 天`, `签到奖励 +${bonus} XP，今日任务已刷新`); gainXp(bonus); }
+    else if (!first) toast('日', '今日任务已刷新', '完成 3 个任务还有额外奖励');
+    checkAchs();
+  }, 900);
+  return true;
+}
+function questEvent(ev, val) {
+  if (ensureDaily()) renderQuests();
+  let changed = false;
+  prog.daily.quests.forEach(q => {
+    const def = QUEST_POOL.find(x => x.id === q.id); if (!def || q.done || def.ev !== ev) return;
+    if (def.set) { if (!prog.daily.colors.includes(val)) prog.daily.colors.push(val); q.n = prog.daily.colors.length; }
+    else if (def.max) q.n = Math.max(q.n, val); else q.n += val;
+    q.n = Math.min(q.n, def.goal); changed = true;
+    if (q.n >= def.goal) { q.done = true; setTimeout(() => { sAch(); toast('✓', `任务完成：${def.text}`, `+${QUEST_XP} XP`); gainXp(QUEST_XP); }, 450); }
+  });
+  if (!prog.daily.all && prog.daily.quests.every(q => q.done)) {
+    prog.daily.all = true; prog.dailyAllDone = (prog.dailyAllDone || 0) + 1;
+    setTimeout(() => { sDone(); burst(controls.target.clone().add(new THREE.Vector3(0, 3, 0)), 100, true); toast('日', '今日任务全部完成', `额外 +${QUEST_ALL_XP} XP，明天还有新任务`); gainXp(QUEST_ALL_XP); checkAchs(); }, 1300);
+  }
+  if (changed) renderQuests();
+}
+function renderQuests() {
+  const d = prog.daily; if (!d) return;
+  document.getElementById('qList').innerHTML = d.quests.map(q => {
+    const def = QUEST_POOL.find(x => x.id === q.id); if (!def) return '';
+    return `<div class="quest${q.done ? ' done' : ''}"><div class="qrow"><span>${def.text}</span><span>${q.done ? '✓ +' + QUEST_XP : q.n + '/' + def.goal}</span></div><div class="bar"><b style="width:${q.n / def.goal * 100}%"></b></div></div>`;
+  }).join('');
+  document.getElementById('qCount').textContent = d.quests.filter(q => q.done).length + '/' + d.quests.length;
+  document.getElementById('streak').textContent = prog.streak > 1 ? `连续 ${prog.streak} 天` : '';
+  const open = prog.questsOpen == null ? !matchMedia('(max-width: 560px)').matches : prog.questsOpen;
+  document.getElementById('quests').classList.toggle('closed', !open);
+  document.getElementById('qHead').setAttribute('aria-expanded', String(open));
+}
+let focus = null;
+function focusOn(v) { focus = { from: controls.target.clone(), to: v.clone(), t0: performance.now() }; }
 function save() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify({ prog, sel: { type: state.type, color: state.color }, bricks: [...bricks.values()].map(b => [b.type, b.color, b.rot, b.x, b.y, b.z]) })); } catch (e) {}
 }
@@ -759,9 +904,14 @@ function buildTray(newly) {
   });
   const sel = partsEl.querySelector('.sel'); if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
-function selectType(id) { state.type = id; setEraser(false); buildTray(); updateHover(); }
-function selectColor(id) { state.color = id; setEraser(false); refreshGhostLook(); buildTray(); updateHover(); }
-function setEraser(on) { state.eraser = on; document.getElementById('tErase').classList.toggle('on', on); updateHover(); }
+function selectType(id) { state.type = id; setMode('build'); buildTray(); updateHover(); }
+function selectColor(id) { state.color = id; if (state.mode === 'erase') setMode('build'); refreshGhostLook(); buildTray(); updateHover(); }
+function setMode(m) {
+  state.mode = m;
+  document.getElementById('tErase').classList.toggle('on', m === 'erase');
+  const tp = document.getElementById('tPaint'); tp.classList.toggle('on', m === 'paint'); tp.classList.toggle('alt', m === 'paint');
+  updateHover();
+}
 function rotate() { state.rot = (state.rot + 1) % 4; sTick(); updateHover(); }
 
 /* ================= modals ================= */
@@ -770,7 +920,7 @@ function openModal(html) { modalCard.innerHTML = html; modal.hidden = false; con
 function closeModal() { modal.hidden = true; }
 modal.addEventListener('click', e => { if (e.target === modal || e.target.closest('[data-close]')) closeModal(); });
 function showAchs() {
-  openModal(`<h2>成就 ${prog.achs.length}/${ACHS.length}</h2><div class="achs">${ACHS.map(a => `<div class="ach ${prog.achs.includes(a.id) ? 'on' : 'off'}"><b>${prog.achs.includes(a.id) ? '★ ' : ''}${a.name}</b><small>${a.desc}</small></div>`).join('')}</div><div class="btns"><button class="btn primary" data-close>继续搭建</button></div>`);
+  openModal(`<h2>成就 ${prog.achs.length}/${ACHS.length}</h2><p class="stats-line">累计放置 ${prog.placed} 块 · 最高连击 ${prog.maxCombo} · 幸运积木 ${prog.lucky} 次 · 刷色 ${prog.painted} 块 · 完成图纸 ${prog.bpDone.length}/${BLUEPRINTS.length} · 连续 ${prog.streak || 1} 天</p><div class="achs">${ACHS.map(a => `<div class="ach ${prog.achs.includes(a.id) ? 'on' : 'off'}"><b>${prog.achs.includes(a.id) ? '★ ' : ''}${a.name}</b><small>${a.desc}</small></div>`).join('')}</div><div class="btns"><button class="btn primary" data-close>继续搭建</button></div>`);
 }
 function showHelp() {
   openModal(`<h2>操作说明</h2><div class="keys">
@@ -782,11 +932,12 @@ function showHelp() {
     <kbd>Alt + 点击</kbd><span>吸取这块积木的颜色和形状</span>
     <kbd>R</kbd><span>旋转积木</span>
     <kbd>E</kbd><span>拆除模式</span>
+    <kbd>P</kbd><span>刷色模式：点积木换成当前颜色</span>
     <kbd>1 – 9</kbd><span>快速选零件</span>
     <kbd>[ ]</kbd><span>切换颜色</span>
     <kbd>Ctrl + Z / Y</kbd><span>撤销 / 重做</span>
     <kbd>B · N · M</kbd><span>图纸 · 昼夜 · 声音</span>
-  </div><p>快速连续放置能叠出连击，经验最多 ×5。升级会解锁新零件和新颜色，填满蓝色虚影可以完成图纸并拿到大额奖励。进度自动保存在这个浏览器里。</p><div class="btns"><button class="btn primary" data-close>开始搭建</button></div>`);
+  </div><p>快速连续放置能叠出连击，经验最多 ×5。每块积木都有机会变成幸运积木，额外送经验。每天有 3 个新任务，连续来搭还有签到奖励。升级会解锁新零件和新颜色，填满蓝色虚影可以完成图纸并拿到大额奖励。进度自动保存在这个浏览器里。</p><div class="btns"><button class="btn primary" data-close>开始搭建</button></div>`);
 }
 function confirmClear() {
   openModal(`<h2>清空整个场景？</h2><p>场上的 ${bricks.size} 块积木都会被移走。等级、经验和成就会保留。</p><div class="btns"><button class="btn" data-close>取消</button><button class="btn danger" id="doClear">清空</button></div>`);
@@ -831,7 +982,8 @@ window.addEventListener('pointerup', e => {
   if (e.target !== el || d.moved || performance.now() - d.t > 600) return;
   setMouse(e);
   if (d.alt) { eyedrop(); return; }
-  if (d.button === 2 || state.eraser) { const hit = pick(); if (hit && hit.object !== baseplate) erase(hit.object.userData.id); return; }
+  if (d.button === 2 || state.mode === 'erase') { const hit = pick(); if (hit && hit.object !== baseplate) erase(hit.object.userData.id); return; }
+  if (state.mode === 'paint') { const hit = pick(); if (hit && hit.object !== baseplate) paint(hit.object.userData.id); return; }
   if (d.button === 0) place();
   if (e.pointerType !== 'mouse') { setTimeout(() => { if (!down) { pointerIn = false; updateHover(); } }, 900); }
 });
@@ -845,7 +997,8 @@ window.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (k === 'r') rotate();
-  else if (k === 'e') setEraser(!state.eraser);
+  else if (k === 'e') setMode(state.mode === 'erase' ? 'build' : 'erase');
+  else if (k === 'p') setMode(state.mode === 'paint' ? 'build' : 'paint');
   else if (k === 'b') toggleBp();
   else if (k === 'n') toggleNight();
   else if (k === 'm') toggleSound();
@@ -861,9 +1014,11 @@ window.addEventListener('keydown', e => {
 function toggleBp() { prog.bpShow = !prog.bpShow; document.getElementById('tBp').classList.toggle('on', prog.bpShow); document.getElementById('tBp').classList.add('alt'); refreshBlueprint(false); save(); }
 function toggleNight() { prog.night = !prog.night; if (prog.night) prog.nightSeen = true; applyNight(); checkAchs(); save(); }
 function toggleSound() { prog.muted = !prog.muted; document.getElementById('tSound').style.opacity = prog.muted ? 0.4 : 1; if (!prog.muted) sTick(); save(); }
-function cycleBp(dir) { const i = BLUEPRINTS.findIndex(b => b.id === prog.bp); prog.bp = BLUEPRINTS[(i + dir + BLUEPRINTS.length) % BLUEPRINTS.length].id; if (!prog.bpShow) toggleBp(); refreshBlueprint(false); sTick(); save(); }
+function cycleBp(dir) { const i = BLUEPRINTS.findIndex(b => b.id === prog.bp); prog.bp = BLUEPRINTS[(i + dir + BLUEPRINTS.length) % BLUEPRINTS.length].id; if (!prog.bpShow) toggleBp(); refreshBlueprint(false); focusOn(bpCenter(curBp())); sTick(); save(); }
 document.getElementById('tRotate').onclick = rotate;
-document.getElementById('tErase').onclick = () => setEraser(!state.eraser);
+document.getElementById('tErase').onclick = () => setMode(state.mode === 'erase' ? 'build' : 'erase');
+document.getElementById('tPaint').onclick = () => setMode(state.mode === 'paint' ? 'build' : 'paint');
+document.getElementById('qHead').onclick = () => { prog.questsOpen = document.getElementById('quests').classList.contains('closed'); renderQuests(); sTick(); scheduleSave(); };
 document.getElementById('tUndo').onclick = undo;
 document.getElementById('tRedo').onclick = redo;
 document.getElementById('tBp').onclick = toggleBp;
@@ -893,7 +1048,9 @@ if (levelInfo(prog.xp).l < unlockLevel(state.color)) state.color = 'red';
 refreshGhostLook(); buildTray(); applyNight();
 document.getElementById('tBp').classList.toggle('on', prog.bpShow); document.getElementById('tBp').classList.add('alt');
 document.getElementById('tSound').style.opacity = prog.muted ? 0.4 : 1;
+ensureDaily(); renderQuests();
 refreshBlueprint(false); refreshHud();
+{ const c = bpCenter(curBp()); camera.position.add(c.clone().sub(controls.target)); controls.target.copy(c); controls.update(); }
 
 const tip = document.getElementById('tip');
 if (!prog.tipDone) {
@@ -910,6 +1067,11 @@ const clock = new THREE.Clock();
 const easeOutBack = x => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
 function loop() {
   const dt = Math.min(clock.getDelta(), 0.05); const now = performance.now();
+  if (focus) {
+    const p = Math.min(1, (now - focus.t0) / 750), e = 1 - Math.pow(1 - p, 3);
+    const nt = focus.from.clone().lerp(focus.to, e); camera.position.add(nt.clone().sub(controls.target)); controls.target.copy(nt);
+    if (p >= 1) focus = null;
+  }
   controls.update();
   for (let i = anims.length - 1; i >= 0; i--) {
     const a = anims[i]; const p = Math.min(1, (now - a.t0) / a.dur);
